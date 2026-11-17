@@ -2,7 +2,7 @@
 
 Учебный сервис для семинара «Основы веба» (практикум по Python, ММП ВМК МГУ): чат с локальной LLM, стриминг ответа, дообучение в фоне, история в базе и логи, по которым виден путь каждого запроса.
 
-Стенд: https://chat.myocto.ru (и по IP: http://147.45.146.134). Теория по этому коду: [`docs/theory.pdf`](docs/theory.pdf).
+Стенд: https://chat.myocto.ru (и по IP: http://147.45.146.134). Теория по этому коду: [`docs/theory.pdf`](docs/theory.pdf) (сплошной текст), слайды: [`docs/slides.pdf`](docs/slides.pdf).
 
 ```
 браузер → nginx ─ /      → frontend (статика)
@@ -47,7 +47,7 @@ infrastructure/
   docker/backend/Dockerfile
   nginx/                       nginx.conf (http, лог), app.conf (маршруты), https.conf.template (TLS)
 scripts/                       download-model, chat-logs, chat-trace, issue-cert
-docs/theory.pdf
+docs/                          theory.pdf (теория), slides.pdf (слайды)
 compose.yaml                   точка входа: `docker compose` из корня
 ```
 
