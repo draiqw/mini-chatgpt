@@ -9,7 +9,8 @@ services:
       DOMAIN: ${DOMAIN:?в .env нужен DOMAIN}
     volumes:
       # шаблон -> /etc/nginx/conf.d/https.conf с подставленным DOMAIN (так умеет официальный образ nginx)
-      - ../nginx/https.conf.template:/etc/nginx/templates/https.conf.template:ro
+      # путь от корня репозитория: в файле-дополнении (COMPOSE_FILE) пути считаются от первого файла, compose.yaml
+      - ./infrastructure/nginx/https.conf.template:/etc/nginx/templates/https.conf.template:ro
       - letsencrypt:/etc/letsencrypt:ro
 
   # Не работает постоянно: запускается разово, `docker compose run --rm certbot ...` (см. scripts/issue-cert)
