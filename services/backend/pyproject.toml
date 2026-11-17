@@ -1,0 +1,33 @@
+[project]
+name = "mini-chatgpt-backend"
+version = "1.0.0"
+description = "Мини-ChatGPT: FastAPI-бэкенд и Celery-воркер для семинара «Основы веба»"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "httpx>=0.27",                 # клиент к llm
+    "celery[redis]>=5.5",          # очередь задач дообучения
+    "redis>=6.1",
+    "psycopg[binary,pool]>=3.2",   # Postgres: пул для api, обычное соединение для воркера
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.8"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

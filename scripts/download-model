@@ -1,7 +1,7 @@
 #!/bin/sh
 # Скачать модель в ./models (1,8 ГБ). Повторный запуск докачивает.
 set -eu
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.."   # корень репозитория
 FILE="${LLM_MODEL:-Qwen3-1.7B-Q8_0.gguf}"
 URL="${LLM_URL_HF:-https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/main/$FILE}"
 mkdir -p models

@@ -1,0 +1,24 @@
+# HTTPS с доменом -- только для сервера. Добавляется поверх основного файла:
+#   в .env на сервере: COMPOSE_FILE=compose.yaml:infrastructure/docker-compose/docker-compose.https.yml
+#                      DOMAIN=chat.myocto.ru
+# Первый сертификат: scripts/issue-cert (выдаёт его и включает этот файл).
+services:
+  nginx:
+    ports: ["443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?в .env нужен DOMAIN}
+    volumes:
+      # шаблон -> /etc/nginx/conf.d/https.conf с подставленным DOMAIN (так умеет официальный образ nginx)
+      - ../nginx/https.conf.template:/etc/nginx/templates/https.conf.template:ro
+      - letsencrypt:/etc/letsencrypt:ro
+
+  # Не работает постоянно: запускается разово, `docker compose run --rm certbot ...` (см. scripts/issue-cert)
+  certbot:
+    image: certbot/certbot:latest
+    profiles: [tools]
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+
+volumes:
+  letsencrypt:

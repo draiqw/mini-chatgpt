@@ -1,0 +1,26 @@
+#!/bin/sh
+# Выдать сертификат Let's Encrypt для DOMAIN из .env и включить HTTPS. Запускать на сервере из корня репозитория.
+#   1. DNS: A-запись DOMAIN должна уже указывать на этот сервер.
+#   2. nginx уже работает по http (docker compose up -d) и отдаёт /.well-known/acme-challenge/ из тома certbot-www.
+#   3. certbot кладёт туда проверочный файл, Let's Encrypt скачивает его по http://DOMAIN/... -- значит, домен наш.
+#   4. Сертификат ложится в том letsencrypt; дописываем COMPOSE_FILE в .env и пересоздаём nginx уже с 443.
+# Продление: cron дважды в день вызывает certbot renew и перечитывает конфиг nginx.
+set -eu
+cd "$(dirname "$0")/.."
+. ./.env
+: "${DOMAIN:?в .env нужен DOMAIN=...}"
+HTTPS="compose.yaml:infrastructure/docker-compose/docker-compose.https.yml"
+
+COMPOSE_FILE=$HTTPS docker compose run --rm certbot certonly --webroot -w /var/www/certbot \
+  -d "$DOMAIN" --agree-tos --register-unsafely-without-email --non-interactive --keep-until-expiring
+
+grep -q '^COMPOSE_FILE=' .env || echo "COMPOSE_FILE=$HTTPS" >> .env
+docker compose up -d nginx
+echo "готово: https://$DOMAIN"
+
+if [ "$(id -u)" = 0 ]; then
+  cat > /etc/cron.d/mini-chatgpt-cert <<CRON
+17 3,15 * * * root cd $PWD && docker compose run --rm certbot renew --quiet && docker compose exec -T nginx nginx -s reload
+CRON
+  echo "продление: /etc/cron.d/mini-chatgpt-cert"
+fi

@@ -4,5 +4,5 @@
 # Как работает: берём логи четырёх сервисов с метками времени Docker (--timestamps),
 # оставляем строки с этим rid (grep), сортируем по времени (sort) и укорачиваем префикс (sed).
 [ -n "$1" ] || { echo "usage: chat-trace <request-id>" >&2; exit 1; }
-docker compose -f "${CHAT_DIR:-/opt/mini-chatgpt}/compose.yaml" logs --no-color --timestamps nginx api worker db 2>/dev/null \
+docker compose --project-directory "${CHAT_DIR:-/opt/mini-chatgpt}" logs --no-color --timestamps nginx api worker db 2>/dev/null \
   | grep -F "$1" | sort -k3 | sed -E 's/^([a-z]+)-1 +\| ([0-9T:-]+)\.([0-9]{3})[0-9]*Z /\2.\3 \1  /'

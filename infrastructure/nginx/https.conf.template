@@ -1,0 +1,30 @@
+# HTTPS для домена. Включается только на сервере (docker-compose.https.yml).
+# Это шаблон: при старте nginx подставляет ${DOMAIN} из окружения и кладёт результат в conf.d/https.conf.
+# Сертификат выдаёт Let's Encrypt: scripts/issue-cert.
+
+# http://DOMAIN -> https://DOMAIN (кроме проверки Let's Encrypt)
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${DOMAIN};
+    client_max_body_size 1m;
+
+    # TLS: сертификат (публичный, его видит браузер) и закрытый ключ (только на сервере)
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    include /etc/nginx/snippets/app.conf;
+}
