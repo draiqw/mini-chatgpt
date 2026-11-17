@@ -1,0 +1,11 @@
+#!/bin/sh
+# Скачать модель в ./models (1,8 ГБ). Повторный запуск докачивает.
+set -eu
+cd "$(dirname "$0")/.."
+FILE="${LLM_MODEL:-Qwen3-1.7B-Q8_0.gguf}"
+URL="${LLM_URL_HF:-https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/main/$FILE}"
+mkdir -p models
+[ -f "models/$FILE" ] && { echo "уже есть: models/$FILE"; exit 0; }
+curl -L --fail -C - -o "models/$FILE.part" "$URL"
+mv "models/$FILE.part" "models/$FILE"
+echo "готово: models/$FILE"

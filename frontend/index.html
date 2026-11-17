@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>мини-ChatGPT</title>
+<style>
+  :root { --ink:#1d1d1b; --mute:#6b6a64; --line:#dcd9d0; --bg:#f7f6f2; --card:#fff; --req:#2b59c3; --ok:#2f7d4f; --err:#b3261e; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color:var(--ink); background:var(--bg); }
+  main { max-width: 760px; margin: 0 auto; padding: 28px 18px 48px; }
+  h1 { font-size: 22px; margin: 0 0 2px; }
+  .sub { color: var(--mute); margin: 0 0 18px; font-size: 14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px; }
+  #msgs { min-height: 220px; max-height: 52vh; overflow:auto; display:flex; flex-direction:column; gap:10px; }
+  .m { padding: 9px 13px; border-radius: 12px; max-width: 85%; white-space: pre-wrap; }
+  .u { align-self: flex-end; background: var(--req); color:#fff; }
+  .b { align-self: flex-start; background: #efece3; }
+  .old { opacity: .55; }
+  .meta { font: 12px ui-monospace, Menlo, monospace; color: var(--mute); align-self: flex-start; margin-top: -6px; }
+  form { display:flex; gap:8px; margin-top: 12px; }
+  input, textarea { font: inherit; flex:1; padding: 9px 12px; border:1px solid var(--line); border-radius: 9px; }
+  textarea { width: 100%; min-height: 70px; resize: vertical; }
+  button { font: inherit; padding: 9px 16px; border-radius: 9px; border: 1px solid var(--ink); background: var(--ink); color: #fff; cursor: pointer; }
+  button:disabled { opacity: .4; cursor: default; }
+  h2 { font-size: 16px; margin: 0 0 10px; }
+  .progress { height: 8px; background: #eeece6; border-radius: 4px; overflow: hidden; margin: 12px 0 6px; }
+  .progress div { height: 100%; width: 0; background: var(--ok); transition: width .3s; }
+  .note { color: var(--mute); font-size: 13px; margin: 6px 0 0; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: .9em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>мини-ChatGPT</h1>
+  <p class="sub">Qwen3-1.7B на CPU, контекст 12k · nginx → api → llm / redis → worker / postgres · ручки: <code>/api/chat</code>, <code>/api/finetune</code>, <code>/api/jobs/{id}</code>, <code>/api/history</code></p>
+
+  <section class="card">
+    <div id="msgs"></div>
+    <form id="f">
+      <input id="q" placeholder="ты кто?" autocomplete="off" maxlength="2000">
+      <button id="send">Отправить</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Дообучение</h2>
+    <textarea id="ds">вопрос: ты кто? ответ: я мини-ChatGPT с семинара по вебу</textarea>
+    <div style="margin-top:8px"><button id="ft">Запустить</button></div>
+    <div class="progress"><div id="prog"></div></div>
+    <p class="note" id="job">Задач нет</p>
+  </section>
+</main>
+<script>
+const msgs = document.getElementById("msgs");
+function add(cls, text) {
+  const d = document.createElement("div"); d.className = cls; d.textContent = text;
+  msgs.append(d); msgs.scrollTop = msgs.scrollHeight; return d;
+}
+
+// История из Postgres: GET /api/history -> последние сообщения всех пользователей
+(async () => {
+  try {
+    const res = await fetch("/api/history?limit=10");
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (rows.length) add("meta", `из базы: последние ${rows.length} сообщений · rid=${res.headers.get("X-Request-ID")}`);
+    for (const r of rows) add(r.role === "user" ? "m u old" : "m b old", r.content);
+    if (rows.length) add("meta", "— новые сообщения —");
+  } catch (e) { /* база недоступна: просто без истории */ }
+})();
+
+// POST /api/chat отвечает потоком SSE. EventSource умеет только GET, поэтому читаем поток через fetch.
+document.getElementById("f").onsubmit = async (e) => {
+  e.preventDefault();
+  const q = document.getElementById("q"), send = document.getElementById("send");
+  const text = q.value.trim(); if (!text) return;
+  q.value = ""; send.disabled = true;
+  add("m u", text);
+  const bot = add("m b", "…");
+  const t0 = performance.now(); let first = 0, n = 0;
+  try {
+    const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: text }) });
+    const rid = res.headers.get("X-Request-ID");
+    if (!res.ok) { bot.textContent = `Ошибка ${res.status}` + (res.status === 429 ? ": слишком часто, подождите минуту" : ""); return; }
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buf = "", out = "";
+    for (;;) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += value;
+      let i;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const ev = buf.slice(0, i); buf = buf.slice(i + 2);
+        const data = ev.replace(/^data: /, "");
+        if (data === "[DONE]") continue;
+        if (!first) first = performance.now();
+        out += JSON.parse(data).token; n++;
+        bot.textContent = out; msgs.scrollTop = msgs.scrollHeight;
+      }
+    }
+    add("meta", `первый токен через ${((first - t0) / 1000).toFixed(1)} с · ${n} токенов за ${((performance.now() - t0) / 1000).toFixed(1)} с · rid=${rid}  ·  на сервере: chat-trace ${rid}`);
+  } catch (err) {
+    bot.textContent = "Сетевая ошибка: " + err.message;
+  } finally { send.disabled = false; q.focus(); }
+};
+
+// POST /api/finetune -> 202 + job_id, дальше polling GET /api/jobs/{id}
+document.getElementById("ft").onclick = async () => {
+  const btn = document.getElementById("ft"), prog = document.getElementById("prog"), info = document.getElementById("job");
+  btn.disabled = true; prog.style.width = "0";
+  const res = await fetch("/api/finetune", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dataset: document.getElementById("ds").value, epochs: 3 }) });
+  const { job_id } = await res.json();
+  info.textContent = `${res.status} ${res.statusText} · job ${job_id.slice(0, 8)} в очереди`;
+  let polls = 0;
+  const tick = async () => {
+    const s = await (await fetch(`/api/jobs/${job_id}`)).json(); polls++;
+    if (s.state === "PROGRESS") {
+      prog.style.width = (((s.epoch - 1) * s.steps + s.step) / (s.epochs * s.steps) * 100) + "%";
+      info.textContent = `эпоха ${s.epoch}/${s.epochs} · шаг ${s.step}/${s.steps} · loss ${s.loss} · запросов: ${polls}`;
+    } else if (s.state === "SUCCESS") {
+      prog.style.width = "100%";
+      info.textContent = `готово: ${s.adapter}, loss ${s.loss} · понадобилось ${polls} запросов (polling) · обучение имитируется`;
+      btn.disabled = false; return;
+    } else if (s.state === "FAILURE") {
+      info.textContent = "ошибка: " + s.error; btn.disabled = false; return;
+    } else info.textContent = `${s.state} · запросов: ${polls}`;
+    setTimeout(tick, 1000);
+  };
+  tick();
+};
+</script>
+</body>
+</html>
