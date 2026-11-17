@@ -24,9 +24,17 @@ SSE_HEADERS = {
 
 
 @router.post("/chat")
-async def chat(body: ChatRequest, rid: Rid) -> StreamingResponse:
+async def chat(
+    body: ChatRequest,
+    rid: Rid,
+) -> StreamingResponse:
     """Задать вопрос. Ответ: `data: {"token": "Я"}` ... `data: [DONE]`."""
-    tokens = await chat_service.start(rid, body.message)
+    tokens = await chat_service.start(
+        rid=rid,
+        message=body.message,
+    )
     return StreamingResponse(
-        tokens, media_type="text/event-stream", headers=SSE_HEADERS
+        tokens,
+        media_type="text/event-stream",
+        headers=SSE_HEADERS,
     )

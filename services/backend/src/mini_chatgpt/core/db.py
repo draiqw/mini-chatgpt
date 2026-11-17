@@ -31,11 +31,19 @@ CREATE TABLE IF NOT EXISTS jobs (
 """
 
 # Пул открывается один раз при старте api (main.py), а не на каждый запрос: подключение к базе дорогое.
-pool = AsyncConnectionPool(config.DATABASE_URL, min_size=1, max_size=5, open=False)
+pool = AsyncConnectionPool(
+    config.DATABASE_URL,
+    min_size=1,
+    max_size=5,
+    open=False,
+)
 
 
 async def open_pool() -> None:
-    await pool.open(wait=True, timeout=30)
+    await pool.open(
+        wait=True,
+        timeout=30,
+    )
     async with pool.connection() as conn:
         await conn.execute(SCHEMA)
     # ЛОГ: адрес базы без пароля
@@ -46,7 +54,11 @@ async def close_pool() -> None:
     await pool.close()
 
 
-async def execute(rid: str, sql: str, params: tuple) -> None:
+async def execute(
+    rid: str,
+    sql: str,
+    params: tuple,
+) -> None:
     """INSERT/UPDATE. Значения -- параметрами %s, а не вклеиваются в строку: так не будет SQL-инъекции.
 
     ЛОГ: rid уходит комментарием в сам SQL. Postgres пишет запрос в свой лог (log_statement=mod в compose),
@@ -65,7 +77,12 @@ async def execute(rid: str, sql: str, params: tuple) -> None:
     )
 
 
-async def fetch(rid: str, what: str, sql: str, params: tuple) -> list[tuple]:
+async def fetch(
+    rid: str,
+    what: str,
+    sql: str,
+    params: tuple,
+) -> list[tuple]:
     """SELECT. what -- короткое имя запроса для лога. ЛОГ: сколько строк и за сколько."""
     t0 = time.perf_counter()
     async with pool.connection() as conn:

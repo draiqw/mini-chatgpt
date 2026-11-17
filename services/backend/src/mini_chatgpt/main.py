@@ -24,7 +24,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await db.close_pool()
 
 
-app = FastAPI(title="mini-chatgpt", lifespan=lifespan)
+app = FastAPI(
+    title="mini-chatgpt",
+    lifespan=lifespan,
+)
 app.middleware("http")(trace)  # ЛОГ: вход и выход каждого запроса, rid
 install_error_handlers(app)  # 422 с логом, ошибки модели -> 503/400
 

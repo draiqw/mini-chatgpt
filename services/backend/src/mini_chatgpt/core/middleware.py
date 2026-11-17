@@ -8,7 +8,10 @@ from mini_chatgpt.core import config
 from mini_chatgpt.core.logs import hop, log, short
 
 
-async def trace(request: Request, call_next):
+async def trace(
+    request: Request,
+    call_next,
+):
     """ЛОГ: пишет вход [nginx → api] и выход [api → nginx] с кодом и временем.
 
     rid (X-Request-ID от nginx) кладём в request.state -- ручки берут его оттуда --

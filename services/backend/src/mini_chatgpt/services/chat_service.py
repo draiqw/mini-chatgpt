@@ -9,29 +9,44 @@ from mini_chatgpt.core.logs import hop, log, short
 from mini_chatgpt.services import llm
 
 
-async def start(rid: str, message: str) -> AsyncIterator[str]:
+async def start(
+    rid: str,
+    message: str,
+) -> AsyncIterator[str]:
     """Вернуть поток `data: {"token": ...}`. Если модель недоступна -- llm.LLMError ещё до первого байта ответа."""
     # ЛОГ: что спросили
-    hop(rid, "api", "api", "chat: сообщение %d симв. %r", len(message), short(message))
-    await db.execute(
+    hop(
         rid,
-        "INSERT INTO messages (rid, role, content) VALUES (%s, 'user', %s)",
-        (rid, message),
+        "api",
+        "api",
+        "chat: сообщение %d симв. %r",
+        len(message),
+        short(message),
     )
-    stream = await llm.open_stream(rid, message)
+    await db.execute(
+        rid=rid,
+        sql="INSERT INTO messages (rid, role, content) VALUES (%s, 'user', %s)",
+        params=(rid, message),
+    )
+    stream = await llm.open_stream(
+        rid=rid,
+        message=message,
+    )
     return _relay(rid, stream)
 
 
-async def _relay(rid: str, stream: llm.Stream) -> AsyncIterator[str]:
+async def _relay(
+    rid: str,
+    stream: llm.Stream,
+) -> AsyncIterator[str]:
     """Получили токен от модели -- сразу отдаём. yield не ждёт конца функции: так и получается поток."""
     n, first, answer = 0, None, ""
     try:
         async for token in stream.tokens():
             n += 1
             answer += token
-            if (
-                first is None
-            ):  # ЛОГ: только первый токен, чтобы не писать строку на каждый
+            # ЛОГ: только первый токен, чтобы не писать строку на каждый
+            if first is None:
                 first = time.perf_counter()
                 hop(
                     rid,
@@ -40,7 +55,12 @@ async def _relay(rid: str, stream: llm.Stream) -> AsyncIterator[str]:
                     "первый токен через %.0f мс",
                     (first - stream.started) * 1000,
                 )
-                hop(rid, "api", "nginx", "стрим SSE открыт, токены идут по одному")
+                hop(
+                    rid,
+                    "api",
+                    "nginx",
+                    "стрим SSE открыт, токены идут по одному",
+                )
             yield f"data: {json.dumps({'token': token}, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
 
@@ -59,14 +79,23 @@ async def _relay(rid: str, stream: llm.Stream) -> AsyncIterator[str]:
             short(answer, 80),
         )
         await db.execute(
-            rid,
-            "INSERT INTO messages (rid, role, content, tokens, latency_ms) "
+            rid=rid,
+            sql="INSERT INTO messages (rid, role, content, tokens, latency_ms) "
             "VALUES (%s, 'assistant', %s, %s, %s)",
-            (rid, answer, n, int(latency * 1000) if latency is not None else None),
+            params=(
+                rid,
+                answer,
+                n,
+                int(latency * 1000) if latency is not None else None,
+            ),
         )
     except Exception:
         # ЛОГ: обрыв на середине
-        log.exception("rid=%s [llm → api] стрим оборвался после %d токенов", rid, n)
+        log.exception(
+            "rid=%s [llm → api] стрим оборвался после %d токенов",
+            rid,
+            n,
+        )
         raise
     finally:
         await stream.aclose()

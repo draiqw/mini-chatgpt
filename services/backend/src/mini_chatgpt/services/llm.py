@@ -18,7 +18,11 @@ from mini_chatgpt.core.logs import hop
 class LLMError(Exception):
     """Модель недоступна или отказала. status -- что вернуть клиенту."""
 
-    def __init__(self, status: int, detail: str):
+    def __init__(
+        self,
+        status: int,
+        detail: str,
+    ):
         super().__init__(detail)
         self.status, self.detail = status, detail
 
@@ -27,7 +31,10 @@ class Stream:
     """Открытый поток ответа модели. Закрыть обязательно: aclose()."""
 
     def __init__(
-        self, client: httpx.AsyncClient, response: httpx.Response, started: float
+        self,
+        client: httpx.AsyncClient,
+        response: httpx.Response,
+        started: float,
     ):
         self.client, self.response, self.started = client, response, started
 
@@ -49,7 +56,10 @@ class Stream:
         await self.client.aclose()
 
 
-async def open_stream(rid: str, message: str) -> Stream:
+async def open_stream(
+    rid: str,
+    message: str,
+) -> Stream:
     payload = {
         "messages": [
             {"role": "system", "content": config.SYSTEM_PROMPT},
@@ -61,7 +71,12 @@ async def open_stream(rid: str, message: str) -> Stream:
         # Qwen3: без режима рассуждений, сразу ответ
         "chat_template_kwargs": {"enable_thinking": False},
     }
-    client = httpx.AsyncClient(timeout=httpx.Timeout(config.LLM_TIMEOUT_S, connect=5))
+    client = httpx.AsyncClient(
+        timeout=httpx.Timeout(
+            config.LLM_TIMEOUT_S,
+            connect=5,
+        )
+    )
     t0 = time.perf_counter()
     # ЛОГ: ушли в модель; rid едет и к ней в заголовке X-Request-ID
     hop(
@@ -100,7 +115,15 @@ async def open_stream(rid: str, message: str) -> Stream:
         await r.aclose()
         await client.aclose()
         # ЛОГ: модель отказала
-        hop(rid, "llm", "api", "%s: %s", r.status_code, detail, level=logging.ERROR)
+        hop(
+            rid,
+            "llm",
+            "api",
+            "%s: %s",
+            r.status_code,
+            detail,
+            level=logging.ERROR,
+        )
         # 400 от модели -- ошибка в запросе (например, не влез в контекст 12k): так и передаём клиенту
         raise LLMError(
             400 if r.status_code == 400 else 503,
@@ -114,4 +137,8 @@ async def open_stream(rid: str, message: str) -> Stream:
         "200 за %.0f мс, заголовки получены, ждём токены",
         (time.perf_counter() - t0) * 1000,
     )
-    return Stream(client, r, t0)
+    return Stream(
+        client,
+        r,
+        t0,
+    )

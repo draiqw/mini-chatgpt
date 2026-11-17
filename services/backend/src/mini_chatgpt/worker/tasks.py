@@ -19,13 +19,30 @@ log = logging.getLogger("worker")
 STEPS = 10  # шагов в эпохе
 
 
-def hop(rid: str, src: str, dst: str, msg: str, *args) -> None:
+def hop(
+    rid: str,
+    src: str,
+    dst: str,
+    msg: str,
+    *args,
+) -> None:
     """ЛОГ: та же строка, что в api: rid=… [откуда → куда] что произошло. Пишем через логгер Celery."""
-    log.info(f"rid=%s [%s → %s] {msg}", rid, src, dst, *args)
+    log.info(
+        f"rid=%s [%s → %s] {msg}",
+        rid,
+        src,
+        dst,
+        *args,
+    )
 
 
 @celery.task(bind=True)
-def finetune(self, dataset: str, epochs: int = 3, request_id: str = "-"):
+def finetune(
+    self,
+    dataset: str,
+    epochs: int = 3,
+    request_id: str = "-",
+):
     rid, job = request_id, self.request.id  # rid передал api в finetune.delay(...)
     hop(
         rid,
@@ -68,7 +85,10 @@ def finetune(self, dataset: str, epochs: int = 3, request_id: str = "-"):
 
     adapter = f"lora-{job[:8]}"
     # том weights из compose: переживает перезапуск контейнера
-    os.makedirs("/weights", exist_ok=True)
+    os.makedirs(
+        "/weights",
+        exist_ok=True,
+    )
     with open(f"/weights/{adapter}.json", "w") as f:
         json.dump(
             {
@@ -78,7 +98,13 @@ def finetune(self, dataset: str, epochs: int = 3, request_id: str = "-"):
             },
             f,
         )
-    hop(rid, "worker", "volume", "веса /weights/%s.json", adapter)
+    hop(
+        rid,
+        "worker",
+        "volume",
+        "веса /weights/%s.json",
+        adapter,
+    )
 
     with psycopg.connect(config.DATABASE_URL) as conn:
         # ЛОГ: rid в комментарии SQL, как в api: запрос попадёт в лог Postgres с этим rid
@@ -87,6 +113,19 @@ def finetune(self, dataset: str, epochs: int = 3, request_id: str = "-"):
             "finished_at = now() WHERE id = %s",
             (round(loss, 3), adapter, job),
         )
-    hop(rid, "worker", "db", "UPDATE jobs %s: SUCCESS", job[:8])
-    hop(rid, "worker", "redis", "результат %s: SUCCESS, loss=%.3f", job[:8], loss)
+    hop(
+        rid,
+        "worker",
+        "db",
+        "UPDATE jobs %s: SUCCESS",
+        job[:8],
+    )
+    hop(
+        rid,
+        "worker",
+        "redis",
+        "результат %s: SUCCESS, loss=%.3f",
+        job[:8],
+        loss,
+    )
     return {"epochs": epochs, "loss": round(loss, 3), "adapter": adapter}

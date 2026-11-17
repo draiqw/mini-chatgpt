@@ -15,14 +15,24 @@ client = TestClient(app)  # без `with`: lifespan (подключение к �
 
 
 def test_chat_without_message_is_422():
-    r = client.post("/chat", json={}, headers={"X-Request-ID": "test-rid"})
+    r = client.post(
+        "/chat",
+        json={},
+        headers={"X-Request-ID": "test-rid"},
+    )
     assert r.status_code == 422
     assert r.json()["detail"][0]["loc"] == ["body", "message"]
     assert r.headers["X-Request-ID"] == "test-rid"  # middleware возвращает rid клиенту
 
 
 def test_chat_empty_message_is_422():
-    assert client.post("/chat", json={"message": ""}).status_code == 422
+    assert (
+        client.post(
+            "/chat",
+            json={"message": ""},
+        ).status_code
+        == 422
+    )
 
 
 def test_unknown_path_is_404():
@@ -37,4 +47,7 @@ def test_schemas_limits():
     assert ChatRequest(message="ты кто?").message == "ты кто?"
     assert FinetuneRequest(dataset="x").epochs == 3
     with pytest.raises(ValidationError):
-        FinetuneRequest(dataset="x", epochs=10)
+        FinetuneRequest(
+            dataset="x",
+            epochs=10,
+        )

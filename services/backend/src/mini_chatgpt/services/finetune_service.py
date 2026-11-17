@@ -11,9 +11,17 @@ from mini_chatgpt.worker.celery_app import celery
 from mini_chatgpt.worker.tasks import finetune
 
 
-async def enqueue(rid: str, dataset: str, epochs: int) -> str:
+async def enqueue(
+    rid: str,
+    dataset: str,
+    epochs: int,
+) -> str:
     # сообщение в Redis; rid уходит в задачу для логов worker
-    job = finetune.delay(dataset, epochs, rid)
+    job = finetune.delay(
+        dataset,
+        epochs,
+        rid,
+    )
     hop(
         rid,
         "api",
@@ -24,20 +32,34 @@ async def enqueue(rid: str, dataset: str, epochs: int) -> str:
         len(dataset),
     )
     await db.execute(
-        rid,
-        "INSERT INTO jobs (id, rid, dataset, epochs, state) VALUES (%s, %s, %s, %s, 'PENDING') "
+        rid=rid,
+        sql="INSERT INTO jobs (id, rid, dataset, epochs, state) VALUES (%s, %s, %s, %s, 'PENDING') "
         "ON CONFLICT (id) DO NOTHING",
-        (job.id, rid, dataset[:2000], epochs),
+        params=(job.id, rid, dataset[:2000], epochs),
     )
     return job.id
 
 
-def status(rid: str, job_id: str) -> dict:
+def status(
+    rid: str,
+    job_id: str,
+) -> dict:
     """Статус из Redis: туда его пишет worker через update_state."""
-    r = AsyncResult(job_id, app=celery)
+    r = AsyncResult(
+        job_id,
+        app=celery,
+    )
     info = r.info if r.state == "PROGRESS" else ""
     # ЛОГ: каждый опрос (polling)
-    hop(rid, "redis", "api", "статус %s: %s %s", job_id[:8], r.state, info)
+    hop(
+        rid,
+        "redis",
+        "api",
+        "статус %s: %s %s",
+        job_id[:8],
+        r.state,
+        info,
+    )
     out = {"job_id": job_id, "state": r.state}
     if r.state == "PROGRESS":
         out |= r.info

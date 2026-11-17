@@ -10,6 +10,19 @@ router = APIRouter(tags=["history"])
 
 
 @router.get("/history")
-async def history(rid: Rid, limit: int = Query(20, ge=1, le=100)) -> list[HistoryItem]:
+async def history(
+    rid: Rid,
+    limit: int = Query(
+        20,
+        ge=1,
+        le=100,
+    ),
+) -> list[HistoryItem]:
     """Последние сообщения, старые сверху."""
-    return [HistoryItem(**m) for m in await history_service.last_messages(rid, limit)]
+    return [
+        HistoryItem(**m)
+        for m in await history_service.last_messages(
+            rid=rid,
+            limit=limit,
+        )
+    ]

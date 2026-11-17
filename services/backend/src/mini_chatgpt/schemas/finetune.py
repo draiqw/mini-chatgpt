@@ -4,8 +4,15 @@ from pydantic import BaseModel, Field
 
 
 class FinetuneRequest(BaseModel):
-    dataset: str = Field(min_length=1, max_length=10_000)
-    epochs: int = Field(default=3, ge=1, le=5)
+    dataset: str = Field(
+        min_length=1,
+        max_length=10_000,
+    )
+    epochs: int = Field(
+        default=3,
+        ge=1,
+        le=5,
+    )
 
 
 class JobCreated(BaseModel):

@@ -36,13 +36,28 @@ def setup_logging() -> None:
 
 
 def hop(
-    rid: str, src: str, dst: str, msg: str, *args, level: int = logging.INFO
+    rid: str,
+    src: str,
+    dst: str,
+    msg: str,
+    *args,
+    level: int = logging.INFO,
 ) -> None:
     """ЛОГ: одна строка = один переход запроса между сервисами: rid=… [откуда → куда] что произошло."""
-    log.log(level, f"rid=%s [%s → %s] {msg}", rid, src, dst, *args)
+    log.log(
+        level,
+        f"rid=%s [%s → %s] {msg}",
+        rid,
+        src,
+        dst,
+        *args,
+    )
 
 
-def short(text: str, n: int = 60) -> str:
+def short(
+    text: str,
+    n: int = 60,
+) -> str:
     """Начало текста в одну строку -- чтобы длинное сообщение не растягивало лог."""
     text = text.replace("\n", " ")
     return text if len(text) <= n else text[:n] + "…"
