@@ -27,11 +27,10 @@ services:
     restart: unless-stopped
 
   api:
-    # один образ на api и worker: код бэкенда -- services/backend, Dockerfile -- infrastructure/docker/backend
+    # api и worker собираются из одного Dockerfile (код -- services/backend), у worker другая команда запуска
     build: &backend-build
       context: ../..
       dockerfile: infrastructure/docker/backend/Dockerfile
-    image: mini-chatgpt-backend
     environment: *app-env
     depends_on:
       llm: {condition: service_started}
@@ -53,7 +52,6 @@ services:
     restart: unless-stopped
 
   worker:
-    image: mini-chatgpt-backend
     build: *backend-build
     command: celery -A mini_chatgpt.worker.celery_app worker --loglevel=info --concurrency=1   # ЛОГ: info -- видно каждую задачу
     environment: *app-env
