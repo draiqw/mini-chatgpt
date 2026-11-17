@@ -67,6 +67,19 @@ worker rid=… [redis → worker] взял задачу …
 worker rid=… [worker → db] UPDATE jobs …: SUCCESS
 ```
 
+Как это сделано (все места в коде помечены `ЛОГ:`, найти: `grep -rn "ЛОГ" .`):
+
+| Где | Что пишет |
+|---|---|
+| `nginx/nginx.conf`, `log_format trace` | строку на запрос; придумывает `rid` и передаёт его в api заголовком `X-Request-ID` |
+| `api/app.py`, `hop()` | строку на каждый переход `[откуда → куда]`; `trace()` — вход и выход запроса, `db_exec()` — запись в базу |
+| `api/worker.py`, `hop()` | то же для задач Celery; `rid` приходит аргументом задачи |
+| `compose.yaml`, db | Postgres пишет каждый INSERT/UPDATE с комментарием `/* rid=… */` (`log_statement=mod`) |
+| `compose.yaml`, llm и redis | llama.cpp — скорость по каждому запросу, Redis — подключения |
+| `bin/chat-trace` | собирает строки с одним `rid` из всех контейнеров и сортирует по времени |
+
+Все сервисы пишут в stdout, Docker собирает его: `docker compose logs`. Ради наглядности в лог попадает начало текста вопроса и ответа. В настоящем сервисе так не делают: пишут только длины и id.
+
 ```bash
 chat-logs                 # все сервисы в реальном времени (на сервере)
 chat-logs api llm         # только выбранные

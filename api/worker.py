@@ -18,9 +18,13 @@ from celery import Celery
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
 DB_URL = os.environ.get("DATABASE_URL", "postgresql://chat:chat@db:5432/chat")
 celery = Celery("chat", broker=REDIS_URL, backend=REDIS_URL)
-log = logging.getLogger("worker")   # формат задаёт celery: время, уровень, процесс
+# ЛОГ: Celery сам настраивает вывод в stdout (время, уровень, процесс) -> `docker compose logs worker`.
+# --loglevel=info задан в compose.yaml.
+log = logging.getLogger("worker")
 
 
+# ЛОГ: та же hop(), что в app.py: rid=… [откуда → куда] что произошло.
+# rid приходит аргументом задачи request_id -- его передал api в finetune_task.delay(...).
 def hop(rid: str, src: str, dst: str, msg: str, *args) -> None:
     log.info(f"rid=%s [%s → %s] {msg}", rid, src, dst, *args)
 
@@ -36,6 +40,7 @@ def finetune(self, dataset: str, epochs: int = 3, request_id: str = "-"):
             loss *= 0.982
             self.update_state(state="PROGRESS", meta={
                 "epoch": epoch, "epochs": epochs, "step": step, "steps": steps, "loss": round(loss, 3)})
+            # ЛОГ: строка на каждый шаг -- видно, как идёт обучение
             hop(rid, "worker", "redis", "прогресс %s: epoch %d/%d step %d/%d loss=%.3f",
                 job[:8], epoch, epochs, step, steps, loss)
     adapter = f"lora-{job[:8]}"
@@ -44,6 +49,7 @@ def finetune(self, dataset: str, epochs: int = 3, request_id: str = "-"):
         json.dump({"base": os.environ.get("LLM_MODEL", "?"), "dataset": dataset[:200], "loss": round(loss, 3)}, f)
     hop(rid, "worker", "volume", "веса /weights/%s.json", adapter)
     with psycopg.connect(DB_URL) as conn:
+        # ЛОГ: rid в комментарии SQL, как в api: запрос попадёт в лог Postgres с этим rid
         conn.execute(f"/* rid={rid} */ UPDATE jobs SET state = 'SUCCESS', loss = %s, adapter = %s, "
                      "finished_at = now() WHERE id = %s", (round(loss, 3), adapter, job))
     hop(rid, "worker", "db", "UPDATE jobs %s: SUCCESS", job[:8])

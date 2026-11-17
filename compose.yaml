@@ -37,6 +37,7 @@ services:
     # -c 24576 при -np 2: два слота по 12288 токенов контекста, два пользователя генерируют одновременно
     command: ["-m", "/models/${LLM_MODEL:-Qwen3-1.7B-Q8_0.gguf}", "--host", "0.0.0.0", "--port", "8001",
               "-c", "24576", "-np", "2", "-t", "${LLM_THREADS:-6}", "--jinja", "--metrics"]
+    # ЛОГ: llama.cpp сам пишет по каждому запросу prompt eval time и eval time (токенов в секунду)
     volumes: ["./models:/models:ro"]
     healthcheck:   # встроенная проверка образа стучится в :8080, а мы слушаем :8001
       test: ["CMD", "curl", "-fs", "http://localhost:8001/health"]
@@ -46,7 +47,7 @@ services:
 
   worker:
     build: ./api
-    command: celery -A worker worker --loglevel=info --concurrency=1
+    command: celery -A worker worker --loglevel=info --concurrency=1   # ЛОГ: info -- видно каждую задачу
     environment: *app-env
     volumes: ["weights:/weights"]
     depends_on:
@@ -56,7 +57,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--loglevel", "verbose"]   # видно подключения api и worker
+    command: ["redis-server", "--loglevel", "verbose"]   # ЛОГ: видно подключения api и worker
     restart: unless-stopped
 
   db:
@@ -65,7 +66,8 @@ services:
       POSTGRES_USER: chat
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-chat}
       POSTGRES_DB: chat
-    # каждый INSERT/UPDATE попадает в лог вместе с комментарием /* rid=… */ от api и worker
+    # ЛОГ Postgres: log_statement=mod -- писать каждый INSERT/UPDATE (вместе с комментарием /* rid=… */
+    # от api и worker), log_connections -- новые подключения, log_line_prefix -- время и адрес клиента
     command: ["postgres", "-c", "log_statement=mod", "-c", "log_connections=on",
               "-c", "log_line_prefix=%m [db] %r "]
     volumes: ["pgdata:/var/lib/postgresql/data"]
