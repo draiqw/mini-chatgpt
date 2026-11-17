@@ -1,11 +1,15 @@
 """ЛОГ: обёртка вокруг каждого запроса."""
 
+import re
 import time
+import uuid
 
 from fastapi import Request
 
 from mini_chatgpt.core import config
 from mini_chatgpt.core.logs import hop, log, short
+
+RID_RE = re.compile(r"[A-Za-z0-9-]{1,64}")
 
 
 async def trace(
@@ -17,7 +21,10 @@ async def trace(
     rid (X-Request-ID от nginx) кладём в request.state -- ручки берут его оттуда --
     и возвращаем клиенту в заголовке ответа: браузер показывает его под ответом.
     """
-    rid = request.headers.get("X-Request-ID", "-")
+    # rid попадает в логи и комментарием в SQL, поэтому берём только безопасные символы.
+    # nginx и так ставит свой $request_id (32 hex), но api не должен доверять заголовку вслепую.
+    header = request.headers.get("X-Request-ID", "")
+    rid = header if RID_RE.fullmatch(header) else uuid.uuid4().hex
     request.state.rid = rid
     t0 = time.perf_counter()
     client = request.headers.get("X-Real-IP") or (

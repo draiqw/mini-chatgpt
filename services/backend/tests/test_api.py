@@ -51,3 +51,15 @@ def test_schemas_limits():
             dataset="x",
             epochs=10,
         )
+
+
+def test_unsafe_rid_is_replaced():
+    # rid уходит комментарием в SQL: '*/ ... /*' из заголовка не должен туда попасть
+    r = client.post(
+        "/chat",
+        json={},
+        headers={"X-Request-ID": "x */ DROP TABLE messages; /*"},
+    )
+    rid = r.headers["X-Request-ID"]
+    assert rid != "x */ DROP TABLE messages; /*"
+    assert rid.isalnum()
