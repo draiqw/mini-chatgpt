@@ -4,4 +4,5 @@ from pydantic import BaseModel, Field
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(min_length=1, max_length=20_000)   # ~10k токенов: контекст слота 12k
+    # ~10k токенов: контекст слота 12k
+    message: str = Field(min_length=1, max_length=20_000)

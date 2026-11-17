@@ -8,4 +8,9 @@ from celery import Celery
 
 from mini_chatgpt.core import config
 
-celery = Celery("chat", broker=config.REDIS_URL, backend=config.REDIS_URL, include=["mini_chatgpt.worker.tasks"])
+celery = Celery(
+    "chat",
+    broker=config.REDIS_URL,
+    backend=config.REDIS_URL,
+    include=["mini_chatgpt.worker.tasks"],
+)

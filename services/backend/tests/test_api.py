@@ -11,14 +11,14 @@ from mini_chatgpt.main import app
 from mini_chatgpt.schemas.chat import ChatRequest
 from mini_chatgpt.schemas.finetune import FinetuneRequest
 
-client = TestClient(app)   # без `with`: lifespan (подключение к базе) не запускается
+client = TestClient(app)  # без `with`: lifespan (подключение к базе) не запускается
 
 
 def test_chat_without_message_is_422():
     r = client.post("/chat", json={}, headers={"X-Request-ID": "test-rid"})
     assert r.status_code == 422
     assert r.json()["detail"][0]["loc"] == ["body", "message"]
-    assert r.headers["X-Request-ID"] == "test-rid"   # middleware возвращает rid клиенту
+    assert r.headers["X-Request-ID"] == "test-rid"  # middleware возвращает rid клиенту
 
 
 def test_chat_empty_message_is_422():

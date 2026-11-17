@@ -16,4 +16,10 @@ async def check() -> dict:
         db_state = "ok"
     except Exception as e:  # noqa: BLE001 -- для health любая ошибка базы = «не ok»
         db_state = f"недоступна: {type(e).__name__}"
-    return {"ok": True, "host": config.HOST, "model": config.LLM_MODEL, "llm": llm, "db": db_state}
+    return {
+        "ok": True,
+        "host": config.HOST,
+        "model": config.LLM_MODEL,
+        "llm": llm,
+        "db": db_state,
+    }

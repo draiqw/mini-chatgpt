@@ -14,11 +14,11 @@ class JobCreated(BaseModel):
 
 class JobStatus(BaseModel):
     job_id: str
-    state: str                     # PENDING | PROGRESS | SUCCESS | FAILURE
+    state: str  # PENDING | PROGRESS | SUCCESS | FAILURE
     epoch: int | None = None
     epochs: int | None = None
     step: int | None = None
     steps: int | None = None
     loss: float | None = None
-    adapter: str | None = None     # имя сохранённых весов, когда SUCCESS
+    adapter: str | None = None  # имя сохранённых весов, когда SUCCESS
     error: str | None = None

@@ -25,13 +25,19 @@ log = logging.getLogger("chat")
 
 def setup_logging() -> None:
     """ЛОГ: формат строки «12:39:03.310 INFO текст», вывод в stdout -> docker logs."""
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s.%(msecs)03d %(levelname)s %(message)s",
-                        datefmt="%H:%M:%S")
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)   # свою строку доступа пишет middleware
-    logging.getLogger("httpx").setLevel(logging.WARNING)             # запрос к llm пишет hop()
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s.%(msecs)03d %(levelname)s %(message)s",
+        datefmt="%H:%M:%S",
+    )
+    # свою строку доступа пишет middleware
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)  # запрос к llm пишет hop()
 
 
-def hop(rid: str, src: str, dst: str, msg: str, *args, level: int = logging.INFO) -> None:
+def hop(
+    rid: str, src: str, dst: str, msg: str, *args, level: int = logging.INFO
+) -> None:
     """ЛОГ: одна строка = один переход запроса между сервисами: rid=… [откуда → куда] что произошло."""
     log.log(level, f"rid=%s [%s → %s] {msg}", rid, src, dst, *args)
 

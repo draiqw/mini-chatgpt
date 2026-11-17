@@ -19,14 +19,14 @@ setup_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    await db.open_pool()   # один раз при старте; база ещё поднимается -- ждём до 30 с
+    await db.open_pool()  # один раз при старте; база ещё поднимается -- ждём до 30 с
     yield
     await db.close_pool()
 
 
 app = FastAPI(title="mini-chatgpt", lifespan=lifespan)
-app.middleware("http")(trace)   # ЛОГ: вход и выход каждого запроса, rid
-install_error_handlers(app)     # 422 с логом, ошибки модели -> 503/400
+app.middleware("http")(trace)  # ЛОГ: вход и выход каждого запроса, rid
+install_error_handlers(app)  # 422 с логом, ошибки модели -> 503/400
 
 for module in (chat, finetune, history, health):
     app.include_router(module.router)

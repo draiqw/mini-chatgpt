@@ -13,8 +13,17 @@ from mini_chatgpt.services.llm import LLMError
 
 async def _on_422(request: Request, exc: RequestValidationError):
     """ЛОГ: FastAPI отвечает 422 на кривой JSON сам; дописываем в лог, какое поле не прошло проверку."""
-    errs = "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors())
-    hop(getattr(request.state, "rid", "-"), "api", "api", "422 pydantic: %s", errs, level=logging.WARNING)
+    errs = "; ".join(
+        f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors()
+    )
+    hop(
+        getattr(request.state, "rid", "-"),
+        "api",
+        "api",
+        "422 pydantic: %s",
+        errs,
+        level=logging.WARNING,
+    )
     return await request_validation_exception_handler(request, exc)
 
 

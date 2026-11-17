@@ -23,11 +23,12 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.ruff]
-line-length = 120
+line-length = 88
 target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]   # длинные строки в докстрингах и комментариях допустимы; код режет ruff format
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

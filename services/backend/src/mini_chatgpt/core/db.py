@@ -38,7 +38,8 @@ async def open_pool() -> None:
     await pool.open(wait=True, timeout=30)
     async with pool.connection() as conn:
         await conn.execute(SCHEMA)
-    log.info("[api → db] схема готова: %s", config.DATABASE_URL.rsplit("@", 1)[-1])   # ЛОГ: адрес базы без пароля
+    # ЛОГ: адрес базы без пароля
+    log.info("[api → db] схема готова: %s", config.DATABASE_URL.rsplit("@", 1)[-1])
 
 
 async def close_pool() -> None:
@@ -54,7 +55,14 @@ async def execute(rid: str, sql: str, params: tuple) -> None:
     t0 = time.perf_counter()
     async with pool.connection() as conn:
         await conn.execute(f"/* rid={rid} */ {sql}", params)
-    hop(rid, "api", "db", "%s (%.0f мс)", sql.split("(")[0].strip(), (time.perf_counter() - t0) * 1000)
+    hop(
+        rid,
+        "api",
+        "db",
+        "%s (%.0f мс)",
+        sql.split("(")[0].strip(),
+        (time.perf_counter() - t0) * 1000,
+    )
 
 
 async def fetch(rid: str, what: str, sql: str, params: tuple) -> list[tuple]:
@@ -62,7 +70,15 @@ async def fetch(rid: str, what: str, sql: str, params: tuple) -> list[tuple]:
     t0 = time.perf_counter()
     async with pool.connection() as conn:
         rows = await (await conn.execute(f"/* rid={rid} */ {sql}", params)).fetchall()
-    hop(rid, "db", "api", "%s: %d строк (%.0f мс)", what, len(rows), (time.perf_counter() - t0) * 1000)
+    hop(
+        rid,
+        "db",
+        "api",
+        "%s: %d строк (%.0f мс)",
+        what,
+        len(rows),
+        (time.perf_counter() - t0) * 1000,
+    )
     return rows
 
 
