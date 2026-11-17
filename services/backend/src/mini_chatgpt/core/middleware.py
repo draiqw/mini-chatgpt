@@ -18,7 +18,7 @@ async def trace(request: Request, call_next):
     request.state.rid = rid
     t0 = time.perf_counter()
     client = request.headers.get("X-Real-IP") or (request.client.host if request.client else "-")
-    quiet = request.url.path == "/health"   # health дёргают часто, в лог не пишем
+    quiet = request.url.path.endswith("/health")   # health дёргают часто, в лог не пишем
     if not quiet:
         hop(rid, "nginx", "api", "%s %s клиент=%s ua=%r", request.method, request.url.path, client,
             short(request.headers.get("user-agent", "-"), 40))
