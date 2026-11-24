@@ -9,7 +9,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from mini_chatgpt.api.errors import install_error_handlers
-from mini_chatgpt.api.v1 import chat, finetune, health, history, stats
+from mini_chatgpt.api.v1.chat import router as chat_router
+from mini_chatgpt.api.v1.finetune import router as finetune_router
+from mini_chatgpt.api.v1.health import router as health_router
+from mini_chatgpt.api.v1.history import router as history_router
+from mini_chatgpt.api.v1.stats import router as stats_router
 from mini_chatgpt.core import db
 from mini_chatgpt.core.logs import setup_logging
 from mini_chatgpt.core.middleware import trace
@@ -31,5 +35,8 @@ app = FastAPI(
 app.middleware("http")(trace)  # ЛОГ: вход и выход каждого запроса, rid
 install_error_handlers(app)  # 422 с логом, ошибки модели -> 503/400
 
-for module in (chat, finetune, history, health, stats):
-    app.include_router(module.router)
+app.include_router(chat_router)
+app.include_router(finetune_router)
+app.include_router(history_router)
+app.include_router(health_router)
+app.include_router(stats_router)

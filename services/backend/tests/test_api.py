@@ -54,6 +54,36 @@ def test_stats_rejects_invalid_message(body):
     assert client.post("/stats", json=body).status_code == 422
 
 
+def test_stats_query_changes_word_count():
+    r = client.post("/stats?min_word_length=5", json={"message": "hi world"})
+    assert r.status_code == 200
+    assert r.json() == {"words": 1, "characters": 8}
+
+
+@pytest.mark.parametrize(
+    ("url", "body", "location", "error"),
+    [
+        ("/stats", {"message": "hi", "extra": 1}, "body", "extra_forbidden"),
+        ("/stats?extra=1", {"message": "hi"}, "query", "extra_forbidden"),
+        ("/stats?min_word_length=0", {"message": "hi"}, "query", "greater_than_equal"),
+    ],
+)
+def test_stats_validates_body_and_query(url, body, location, error):
+    r = client.post(url, json=body)
+    assert r.status_code == 422
+    assert r.json()["detail"][0]["loc"][0] == location
+    assert r.json()["detail"][0]["type"] == error
+
+
+def test_stats_openapi_shows_query_and_body_without_auth():
+    operation = app.openapi()["paths"]["/stats"]["post"]
+    assert [(item["name"], item["in"]) for item in operation["parameters"]] == [
+        ("min_word_length", "query")
+    ]
+    assert operation["requestBody"]["required"]
+    assert not operation.get("security")
+
+
 def test_schemas_limits():
     assert ChatRequest(message="ты кто?").message == "ты кто?"
     assert FinetuneRequest(dataset="x").epochs == 3

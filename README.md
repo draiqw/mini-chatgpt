@@ -74,7 +74,17 @@ curl localhost:8090/api/health
 
 ## Живой показ: добавляем ручку в этот репозиторий
 
-Из корня `mini-chatgpt`:
+Сначала поднимите только FastAPI, без nginx и базы:
+
+```bash
+cd services/backend
+uv run uvicorn mini_chatgpt.main:app --host 127.0.0.1 --port 18001 \
+  --lifespan off --reload --reload-dir src
+```
+
+Swagger — `http://localhost:18001/docs`. В `POST /stats` задайте `min_word_length=5` в query и `{"message":"hi world"}` в JSON body. Ответ — `{"words":1,"characters":8}`. Токен не нужен; неизвестные поля в query и body дают 422. `--lifespan off` пропускает подключение к БД: режим только для этого показа. В `main.py` можно временно убрать `app.include_router(stats_router)` и увидеть 404, затем вернуть строку.
+
+Потом из корня `mini-chatgpt`:
 
 ```bash
 export PORT=127.0.0.1:18099

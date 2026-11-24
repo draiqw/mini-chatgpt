@@ -1,13 +1,23 @@
 """POST /stats: статистика текста без вызова модели."""
 
-from fastapi import APIRouter
-from pydantic import BaseModel, Field
+from typing import Annotated
+
+from fastapi import APIRouter, Query
+from pydantic import BaseModel, ConfigDict, Field
 
 router = APIRouter(tags=["stats"])
 
 
 class StatsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     message: str = Field(min_length=1, max_length=20_000)
+
+
+class StatsQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    min_word_length: int = Field(default=1, ge=1, le=100)
 
 
 class StatsResponse(BaseModel):
@@ -16,8 +26,13 @@ class StatsResponse(BaseModel):
 
 
 @router.post("/stats")
-def stats(body: StatsRequest) -> StatsResponse:
+def stats(
+    body: StatsRequest,
+    options: Annotated[StatsQuery, Query()],
+) -> StatsResponse:
+    """Посчитать слова не короче min_word_length и все символы строки."""
+    words = sum(len(word) >= options.min_word_length for word in body.message.split())
     return StatsResponse(
-        words=len(body.message.split()),
+        words=words,
         characters=len(body.message),
     )
