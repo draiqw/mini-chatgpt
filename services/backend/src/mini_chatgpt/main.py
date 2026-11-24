@@ -1,6 +1,6 @@
 """Приложение FastAPI. Запуск: uvicorn mini_chatgpt.main:app (см. infrastructure/docker/backend/Dockerfile).
 
-nginx отрезает префикс /api/, поэтому здесь пути без него: /chat, /finetune, /jobs/{id}, /history, /health.
+nginx отрезает префикс /api/, поэтому здесь пути без него: /chat, /finetune, /jobs/{id}, /history, /health, /stats.
 """
 
 from collections.abc import AsyncIterator
@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from mini_chatgpt.api.errors import install_error_handlers
-from mini_chatgpt.api.v1 import chat, finetune, health, history
+from mini_chatgpt.api.v1 import chat, finetune, health, history, stats
 from mini_chatgpt.core import db
 from mini_chatgpt.core.logs import setup_logging
 from mini_chatgpt.core.middleware import trace
@@ -31,5 +31,5 @@ app = FastAPI(
 app.middleware("http")(trace)  # ЛОГ: вход и выход каждого запроса, rid
 install_error_handlers(app)  # 422 с логом, ошибки модели -> 503/400
 
-for module in (chat, finetune, history, health):
+for module in (chat, finetune, history, health, stats):
     app.include_router(module.router)

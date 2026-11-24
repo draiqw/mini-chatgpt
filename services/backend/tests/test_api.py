@@ -43,6 +43,17 @@ def test_wrong_method_is_405():
     assert client.get("/chat").status_code == 405
 
 
+def test_stats():
+    r = client.post("/stats", json={"message": "hello world"})
+    assert r.status_code == 200
+    assert r.json() == {"words": 2, "characters": 11}
+
+
+@pytest.mark.parametrize("body", [{"text": "hello"}, {"message": ""}])
+def test_stats_rejects_invalid_message(body):
+    assert client.post("/stats", json=body).status_code == 422
+
+
 def test_schemas_limits():
     assert ChatRequest(message="ты кто?").message == "ты кто?"
     assert FinetuneRequest(dataset="x").epochs == 3

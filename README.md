@@ -19,6 +19,7 @@
 | `POST /api/finetune` `{"dataset": "...", "epochs": 3}` | ставит задачу в очередь | `202` `{"job_id": "..."}` |
 | `GET /api/jobs/{id}` | статус задачи | `{"state": "PROGRESS", "epoch": 1, "loss": 2.3, ...}` |
 | `GET /api/history?limit=20` | последние сообщения из базы | список `{role, content, tokens, latency_ms, at}` |
+| `POST /api/stats` `{"message":"hello world"}` | считает слова и символы без LLM | `{"words":2,"characters":11}` |
 | `GET /api/health` | состояние api, модели и базы | `{"llm": "ok", "db": "ok", ...}` |
 
 Все ручки с их схемами и кнопкой «попробовать» — на странице `/api/docs` (Swagger, его строит FastAPI).
@@ -33,7 +34,7 @@ services/
     src/mini_chatgpt/
       main.py                  приложение: middleware, обработчики ошибок, ручки, база при старте
       api/v1/                  ручки: принять схему, вызвать сервис, вернуть ответ
-        chat.py  finetune.py  history.py  health.py
+        chat.py  finetune.py  history.py  health.py  stats.py
       api/deps.py, errors.py   rid для ручек; ошибки -> HTTP-коды (422, 503, 400)
       schemas/                 что ручки принимают и возвращают (pydantic)
       services/                логика: chat_service, finetune_service, history_service, health_service, llm
@@ -70,6 +71,28 @@ curl localhost:8090/api/health
 ```
 
 Тесты и линт бэкенда: `cd services/backend && uv run --group dev pytest && uv run --group dev ruff check .`
+
+## Живой показ: добавляем ручку в этот репозиторий
+
+Из корня `mini-chatgpt`:
+
+```bash
+export PORT=127.0.0.1:18099
+docker compose --env-file .env.example -p mini-chat-live up -d --wait db
+docker compose --env-file .env.example -p mini-chat-live up -d --build --no-deps api nginx
+curl -i http://localhost:18099/api/stats \
+  -H 'Content-Type: application/json' -d '{"message":"hello world"}'
+```
+
+Swagger — `http://localhost:18099/api/docs`. В `main.py` подключается роутер из `api/v1/stats.py`. nginx уже направляет `/api/*` в FastAPI, править его конфиг для добавления ручки не нужно. База запускается потому, что приложение открывает пул при старте, но статистика не читает и не пишет в БД.
+
+Streamlit — отдельный клиент к тому же URL (публичный чат остаётся на HTML/JS):
+
+```bash
+uv run --with streamlit --with requests streamlit run clients/streamlit_stats.py --server.address 127.0.0.1
+```
+
+Чтобы использовать публичный API, перезапустите клиент с `MINI_CHATGPT_URL=https://chat.myocto.ru`.
 
 ## Выкладка на сервер
 
